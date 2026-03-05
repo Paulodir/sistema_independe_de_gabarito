@@ -90,6 +90,8 @@ class App(ctk.CTk):
 
         # Define Home como ativo inicial
         select_menu(self.btn_inicio)
+        # So marcar o botao nao renderiza a tela; precisamos chamar a view inicial.
+        self.show_home()
 
     # ================= HOME =================
 
@@ -153,11 +155,9 @@ class App(ctk.CTk):
         )
         self.posicao_instrucao.pack(pady=5)
 
-        ctk.CTkButton(config, text="Salvar Modelo",
-                      command=self.save_model).pack(pady=5)
+        ctk.CTkButton(config, text="Salvar Modelo",command=self.save_model).pack(pady=5)
 
-        ctk.CTkButton(config, text="Carregar Modelo",
-                      command=self.load_model).pack(pady=5)
+        ctk.CTkButton(config, text="Carregar Modelo", command=self.load_model).pack(pady=5)
 
         # CANVAS
         self.canvas = ctk.CTkCanvas(preview_frame, bg="white")

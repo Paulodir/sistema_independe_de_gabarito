@@ -24,22 +24,72 @@ class App(ctk.CTk):
         self.qr_image = None
         self.barcode_image = None
 
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        # ================= SIDEBAR PROFISSIONAL =================
 
-        self.sidebar = ctk.CTkFrame(self, width=200)
+        self.sidebar = ctk.CTkFrame(self, width=220, corner_radius=0)
         self.sidebar.grid(row=0, column=0, sticky="ns")
+        self.sidebar.grid_rowconfigure(5, weight=1)
 
-        ctk.CTkButton(self.sidebar, text="Home",
-                      command=self.show_home).pack(padx=20, pady=10)
-
-        ctk.CTkButton(self.sidebar, text="Modelos",
-                      command=self.show_editor).pack(padx=20, pady=10)
+        # ================= MAIN FRAME =================
 
         self.main_frame = ctk.CTkFrame(self)
         self.main_frame.grid(row=0, column=1, sticky="nsew")
 
-        self.show_home()
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        # Topo com Logo e Título
+        self.logo_label = ctk.CTkLabel(
+            self.sidebar,
+            text="  Image Example",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            anchor="w"
+        )
+        self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
+
+        # Função para ativar botão selecionado
+        def select_menu(btn):
+            self.btn_inicio.configure(fg_color="transparent")
+            self.modelos_btn.configure(fg_color="transparent")
+
+            btn.configure(fg_color=("gray75", "gray25"))
+
+        # Botão Início
+        self.btn_inicio = ctk.CTkButton(
+            self.sidebar,
+            text=" Início",
+            height=40,
+            anchor="w",
+            corner_radius=0,
+            fg_color="transparent",
+            hover_color=("gray70", "gray30"),
+            command=lambda: [select_menu(self.btn_inicio), self.show_home()]
+        )
+        self.btn_inicio.grid(row=1, column=0, sticky="ew")
+
+        # Botão Modelos
+        self.modelos_btn = ctk.CTkButton(
+            self.sidebar,
+            text=" Modelos de Gabaritos",
+            height=40,
+            anchor="w",
+            corner_radius=0,
+            fg_color="transparent",
+            hover_color=("gray70", "gray30"),
+            command=lambda: [select_menu(self.modelos_btn), self.show_editor()]
+        )
+        self.modelos_btn.grid(row=2, column=0, sticky="ew")
+
+        # Rodapé (System Option)
+        self.appearance_mode = ctk.CTkOptionMenu(
+            self.sidebar,
+            values=["Light", "Dark", "System"],
+            command=ctk.set_appearance_mode
+        )
+        self.appearance_mode.grid(row=6, column=0, padx=20, pady=20, sticky="ew")
+
+        # Define Home como ativo inicial
+        select_menu(self.btn_inicio)
 
     # ================= HOME =================
 
@@ -112,6 +162,11 @@ class App(ctk.CTk):
         # CANVAS
         self.canvas = ctk.CTkCanvas(preview_frame, bg="white")
         self.canvas.grid(row=0, column=0, sticky="nsew")
+        self.scrollbar = ctk.CTkScrollbar(preview_frame, command=self.canvas.yview)
+        self.scrollbar.grid(row=0, column=1, sticky="ns")
+
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.canvas.configure(scrollregion=(0, 0, 900, 1200))
 
         self.update_preview()
 
@@ -222,6 +277,12 @@ class App(ctk.CTk):
             self.posicao_instrucao.set(data["posicao"])
 
             self.update_preview()
+
+            self.canvas.update_idletasks()
+            bbox = self.canvas.bbox("all")
+
+            if bbox:
+                self.canvas.configure(scrollregion=bbox)
 
     # ================= UTILS =================
 

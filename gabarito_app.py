@@ -1,15 +1,8 @@
 import customtkinter as ctk
 from tkinter import messagebox, filedialog
-from PIL import Image
+from PIL import Image, ImageTk
 import requests
 from io import BytesIO
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib import colors
-from reportlab.lib.units import cm
-from reportlab.platypus import SimpleDocTemplate
-from reportlab.platypus import Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
 import os
 
 ctk.set_appearance_mode("dark")
@@ -22,11 +15,11 @@ class App(ctk.CTk):
         super().__init__()
 
         self.title("Sistema Independente de Gabaritos")
-        self.geometry("1000x600")
+        self.geometry("1200x700")
 
         self.logo_path = None
+        self.logo_image = None
 
-        # ===== Layout Principal =====
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
@@ -34,179 +27,193 @@ class App(ctk.CTk):
         self.sidebar = ctk.CTkFrame(self, width=200)
         self.sidebar.grid(row=0, column=0, sticky="ns")
 
-        self.sidebar.grid_rowconfigure(10, weight=1)
-
         self.home_btn = ctk.CTkButton(self.sidebar, text="Home", command=self.show_home)
-        self.home_btn.grid(row=1, column=0, padx=20, pady=10)
+        self.home_btn.pack(padx=20, pady=10)
 
         self.modelos_btn = ctk.CTkButton(self.sidebar, text="Modelos de Gabaritos",
                                          command=self.show_modelos)
-        self.modelos_btn.grid(row=2, column=0, padx=20, pady=10)
+        self.modelos_btn.pack(padx=20, pady=10)
 
-        self.appearance_option = ctk.CTkOptionMenu(
-            self.sidebar,
-            values=["Dark", "Light", "System"],
-            command=self.change_appearance
-        )
-        self.appearance_option.grid(row=11, column=0, padx=20, pady=20)
-
-        # Área principal
+        # Main area
         self.main_frame = ctk.CTkFrame(self)
         self.main_frame.grid(row=0, column=1, sticky="nsew")
 
         self.show_home()
 
-    # ========================
-    # HOME
-    # ========================
+    # ================= HOME =================
+
     def show_home(self):
         self.clear_main()
 
         title = ctk.CTkLabel(self.main_frame,
                              text="Bem-vindo ao Sistema Independente de Gabaritos",
-                             font=("Arial", 24))
-        title.pack(pady=40)
+                             font=("Arial", 26))
+        title.pack(pady=50)
 
         msg = ctk.CTkLabel(
             self.main_frame,
             text="Agradecemos por utilizar nosso sistema.\n\n"
-                 "Em breve novos recursos serão implementados\n"
-                 "para tornar a geração de gabaritos ainda mais completa.",
-            font=("Arial", 16),
+                 "Em breve novos recursos serão implementados.",
+            font=("Arial", 18),
             justify="center"
         )
         msg.pack(pady=20)
 
-    # ========================
-    # MODELOS
-    # ========================
+    # ================= MODELOS =================
+
     def show_modelos(self):
         self.clear_main()
 
         resposta = messagebox.askyesno("Criar Modelo",
                                        "Deseja criar um novo modelo de gabarito?")
-
         if resposta:
             self.show_configuracao()
 
-    # ========================
-    # CONFIGURAÇÃO
-    # ========================
+    # ================= CONFIG =================
+
     def show_configuracao(self):
         self.clear_main()
 
-        title = ctk.CTkLabel(self.main_frame,
-                             text="Configuração do Modelo",
-                             font=("Arial", 22))
-        title.pack(pady=20)
+        self.main_frame.grid_columnconfigure(1, weight=1)
 
-        # Quantidade de questões
-        self.qtd_questoes = ctk.CTkEntry(self.main_frame,
+        # Frame esquerdo (config)
+        config_frame = ctk.CTkFrame(self.main_frame, width=300)
+        config_frame.grid(row=0, column=0, sticky="ns", padx=10, pady=10)
+
+        # Frame direito (preview)
+        preview_frame = ctk.CTkFrame(self.main_frame)
+        preview_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+        preview_frame.grid_rowconfigure(0, weight=1)
+        preview_frame.grid_columnconfigure(0, weight=1)
+
+        # ======= CONFIGURAÇÕES =======
+
+        ctk.CTkLabel(config_frame, text="Configuração do Modelo",
+                     font=("Arial", 18)).pack(pady=10)
+
+        self.qtd_questoes = ctk.CTkEntry(config_frame,
                                          placeholder_text="Quantidade de questões")
-        self.qtd_questoes.pack(pady=10)
+        self.qtd_questoes.pack(pady=5)
+        self.qtd_questoes.bind("<KeyRelease>", lambda e: self.atualizar_preview())
 
-        # Tipo identificação
         self.identificacao = ctk.CTkOptionMenu(
-            self.main_frame,
-            values=["Código de Barras", "QRCode"]
+            config_frame,
+            values=["Código de Barras", "QRCode"],
+            command=lambda e: self.atualizar_preview()
         )
-        self.identificacao.pack(pady=10)
+        self.identificacao.pack(pady=5)
 
-        # Texto instrução
-        self.texto_instrucao = ctk.CTkTextbox(self.main_frame, height=80, width=400)
-        self.texto_instrucao.pack(pady=10)
-        self.texto_instrucao.insert("0.0", "Digite aqui a instrução ou observação...")
+        self.texto_instrucao = ctk.CTkTextbox(config_frame, height=80)
+        self.texto_instrucao.pack(pady=5)
+        self.texto_instrucao.bind("<KeyRelease>", lambda e: self.atualizar_preview())
 
-        # Posição instrução
         self.posicao_instrucao = ctk.CTkOptionMenu(
-            self.main_frame,
-            values=["Topo", "Rodapé"]
+            config_frame,
+            values=["Topo", "Rodapé"],
+            command=lambda e: self.atualizar_preview()
         )
-        self.posicao_instrucao.pack(pady=10)
+        self.posicao_instrucao.pack(pady=5)
+
+        ctk.CTkButton(config_frame, text="Inserir Logo",
+                      command=self.select_logo).pack(pady=5)
+
+        ctk.CTkButton(config_frame, text="Atualizar Preview",
+                      command=self.atualizar_preview).pack(pady=10)
+
+        # ======= CANVAS PREVIEW =======
+
+        self.canvas = ctk.CTkCanvas(preview_frame, bg="white")
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+
+        self.atualizar_preview()
+
+    # ================= PREVIEW =================
+
+    def atualizar_preview(self):
+        self.canvas.delete("all")
+
+        largura = 700
+        altura = 900
+
+        self.canvas.create_rectangle(20, 20, largura, altura, outline="black")
+
+        y = 40
 
         # Logo
-        logo_btn = ctk.CTkButton(self.main_frame, text="Inserir Logo (Arquivo)",
-                                 command=self.select_logo)
-        logo_btn.pack(pady=5)
+        if self.logo_path and os.path.exists(self.logo_path):
+            img = Image.open(self.logo_path)
+            img = img.resize((100, 100))
+            self.logo_image = ImageTk.PhotoImage(img)
+            self.canvas.create_image(60, y + 50, image=self.logo_image)
+        y += 120
 
-        logo_url_btn = ctk.CTkButton(self.main_frame, text="Inserir Logo (URL)",
-                                     command=self.download_logo)
-        logo_url_btn.pack(pady=5)
+        # Campos fixos
+        self.canvas.create_text(200, y, text="Escola: XXXXXX", anchor="w")
+        y += 20
+        self.canvas.create_text(200, y, text="Endereço: XXXXXX", anchor="w")
+        y += 20
+        self.canvas.create_text(200, y, text="Sala: XXXXXX", anchor="w")
+        y += 40
 
-        # Visualizar PDF
-        visualizar_btn = ctk.CTkButton(self.main_frame,
-                                       text="Visualizar Modelo em PDF",
-                                       command=self.gerar_pdf_preview)
-        visualizar_btn.pack(pady=20)
+        # Identificação
+        self.canvas.create_text(200, y,
+                                text=f"Identificação: {self.identificacao.get()}",
+                                anchor="w")
+        y += 40
 
-    # ========================
-    # FUNÇÕES AUXILIARES
-    # ========================
+        # Questões
+        qtd = self.qtd_questoes.get()
+        if qtd.isdigit():
+            qtd = int(qtd)
+        else:
+            qtd = 0
+
+        colunas = 2
+        linha_altura = 25
+        x_inicial = 60
+
+        for i in range(qtd):
+            coluna = i % colunas
+            linha = i // colunas
+
+            x = x_inicial + coluna * 300
+            y_questao = y + linha * linha_altura
+
+            self.canvas.create_text(x, y_questao,
+                                    text=f"{i + 1}.",
+                                    anchor="w")
+
+            for j, letra in enumerate(["A", "B", "C", "D"]):
+                self.canvas.create_oval(x + 30 + j * 30,
+                                        y_questao - 7,
+                                        x + 45 + j * 30,
+                                        y_questao + 8)
+                self.canvas.create_text(x + 38 + j * 30,
+                                        y_questao,
+                                        text=letra)
+
+        # Instrução
+        texto = self.texto_instrucao.get("0.0", "end").strip()
+
+        if texto:
+            if self.posicao_instrucao.get() == "Rodapé":
+                self.canvas.create_text(350, altura - 30,
+                                        text=texto,
+                                        width=600)
+            else:
+                self.canvas.create_text(350, 30,
+                                        text=texto,
+                                        width=600)
+
+    # ================= LOGO =================
+
     def select_logo(self):
         path = filedialog.askopenfilename(filetypes=[("Imagens", "*.png *.jpg *.jpeg")])
         if path:
             self.logo_path = path
-            messagebox.showinfo("Logo", "Logo carregada com sucesso!")
+            self.atualizar_preview()
 
-    def download_logo(self):
-        url = ctk.CTkInputDialog(text="Digite a URL da imagem:", title="Download Logo")
-        link = url.get_input()
-
-        if link:
-            try:
-                response = requests.get(link)
-                img = Image.open(BytesIO(response.content))
-                path = "logo_temp.png"
-                img.save(path)
-                self.logo_path = path
-                messagebox.showinfo("Logo", "Logo baixada com sucesso!")
-            except:
-                messagebox.showerror("Erro", "Não foi possível baixar a imagem.")
-
-    def gerar_pdf_preview(self):
-        qtd = self.qtd_questoes.get()
-        tipo_id = self.identificacao.get()
-        instrucao = self.texto_instrucao.get("0.0", "end")
-
-        if not qtd.isdigit():
-            messagebox.showerror("Erro", "Quantidade de questões inválida.")
-            return
-
-        doc = SimpleDocTemplate("preview_modelo.pdf")
-        elementos = []
-        estilos = getSampleStyleSheet()
-
-        elementos.append(Paragraph("<b>MODELO DE GABARITO</b>", estilos["Title"]))
-        elementos.append(Spacer(1, 0.5 * cm))
-
-        # Logo
-        if self.logo_path and os.path.exists(self.logo_path):
-            elementos.append(RLImage(self.logo_path, width=4*cm, height=4*cm))
-            elementos.append(Spacer(1, 0.5 * cm))
-
-        # Campos fixos (fase atual)
-        elementos.append(Paragraph("Escola: XXXXXX", estilos["Normal"]))
-        elementos.append(Paragraph("Endereço: XXXXXX", estilos["Normal"]))
-        elementos.append(Paragraph("Sala: XXXXXX", estilos["Normal"]))
-        elementos.append(Spacer(1, 0.5 * cm))
-
-        # Identificação
-        elementos.append(Paragraph(f"Identificação: {tipo_id}", estilos["Normal"]))
-        elementos.append(Spacer(1, 0.5 * cm))
-
-        # Questões
-        elementos.append(Paragraph(f"Quantidade de Questões: {qtd}", estilos["Normal"]))
-        elementos.append(Spacer(1, 1 * cm))
-
-        # Instrução
-        elementos.append(Paragraph(instrucao, estilos["Normal"]))
-
-        doc.build(elementos)
-
-        messagebox.showinfo("PDF", "Preview gerado como preview_modelo.pdf")
-
-    def change_appearance(self, modo):
-        ctk.set_appearance_mode(modo)
+    # ================= UTILS =================
 
     def clear_main(self):
         for widget in self.main_frame.winfo_children():
